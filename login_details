@@ -1,0 +1,55 @@
+/**
+PROBLEM STATEMENT: Given table provides login and logoff details of one user.
+Generate a report to represents the different periods (in mins) when user was logged in.
+**/
+
+drop table if exists login_details;
+create table login_details
+(
+	times	time,
+	status	varchar(3)
+);
+insert into login_details values('10:00:00', 'on');
+insert into login_details values('10:01:00', 'on');
+insert into login_details values('10:02:00', 'on');
+insert into login_details values('10:03:00', 'off');
+insert into login_details values('10:04:00', 'on');
+insert into login_details values('10:05:00', 'on');
+insert into login_details values('10:06:00', 'off');
+insert into login_details values('10:07:00', 'off');
+insert into login_details values('10:08:00', 'off');
+insert into login_details values('10:09:00', 'on');
+insert into login_details values('10:10:00', 'on');
+insert into login_details values('10:11:00', 'on');
+insert into login_details values('10:12:00', 'on');
+insert into login_details values('10:13:00', 'off');
+insert into login_details values('10:14:00', 'off');
+insert into login_details values('10:15:00', 'on');
+insert into login_details values('10:16:00', 'off');
+insert into login_details values('10:17:00', 'off');
+
+select * from login_details;
+
+
+--SOLUTION
+
+
+with cte as (
+	select distinct first_value(times) over(partition by grp order by grp, times) as first_login,
+	last_value(times) over(partition by grp order by grp, times
+						  range between unbounded preceding and unbounded following) as last_login
+	from ( select *, rn - row_number() over() as grp
+		   from ( select *, row_number() over() as rn
+				  from login_details ) as x
+	where status = 'on' ) as y
+	)
+	
+, df as (
+	select *, lead(times) over() as log_off
+	from cte
+	right join login_details as l on cte.last_login = l.times
+	)
+	
+select first_login, log_off, extract(minutes from log_off - first_login) as duration
+from df
+where first_login is not null
